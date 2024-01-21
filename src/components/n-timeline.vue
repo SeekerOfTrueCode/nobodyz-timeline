@@ -42,7 +42,6 @@ const labelsTranslateY = computed(
 const labelsTransitionTimeS = computed(
   () => `${round(props.transitionTimeMs / 1000, 1)}s`
 );
-// 0.2s
 
 /**
  * TODO:
