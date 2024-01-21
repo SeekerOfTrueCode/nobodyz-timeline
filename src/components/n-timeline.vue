@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { VNodeRef, computed, nextTick, ref } from "vue";
+import { VNodeRef, computed, withDefaults, ref } from "vue";
 import { useCustomScroll } from "./composables/use-custom-scroll";
+
+function round(value: number, precision: number) {
+  var multiplier = Math.pow(10, precision || 0);
+  return Math.round(value * multiplier) / multiplier;
+}
 
 // FIXME:
 declare global {
@@ -14,21 +19,30 @@ type Item = {
 defineSlots<{
   item(props: Item): any;
 }>();
-const props = defineProps<{
-  transitionTimeMs?: number;
+const props = withDefaults(
+  defineProps<{
+    transitionTimeMs?: number;
 
-  items: Item[];
-}>();
+    items: Item[];
+  }>(),
+  {
+    transitionTimeMs: 200,
+  }
+);
 
 const itemsRef = ref(new Map<Item, VNodeRef | any>());
 
 const currentItem = ref<Item | undefined>(undefined);
 const currentItemIndex = ref<number>(0);
 
-const transitionTimeMs = computed(() => props.transitionTimeMs ?? 200);
+const transitionTimeMs = computed(() => props.transitionTimeMs);
 const labelsTranslateY = computed(
   () => `${-148 + -65.166 * currentItemIndex.value}px`
 );
+const labelsTransitionTimeS = computed(
+  () => `${round(props.transitionTimeMs / 1000, 1)}s`
+);
+// 0.2s
 
 /**
  * TODO:
@@ -164,10 +178,17 @@ div.timeline__labels > ul {
   text-align: center;
 
   transform: translateY(v-bind(labelsTranslateY));
+  transition: transform v-bind(labelsTransitionTimeS) cubic-bezier(0.475, -0.020, 0.010, 1.005);
 }
 
 div.timeline__labels > ul > li {
   margin: 24px 0;
+  transition: margin v-bind(labelsTransitionTimeS)
+      cubic-bezier(0.475, -0.02, 0.01, 1.005),
+    font-size v-bind(labelsTransitionTimeS)
+      cubic-bezier(0.475, -0.02, 0.01, 1.005),
+    line-height v-bind(labelsTransitionTimeS)
+      cubic-bezier(0.475, -0.02, 0.01, 1.005);
 }
 
 .label--active {
