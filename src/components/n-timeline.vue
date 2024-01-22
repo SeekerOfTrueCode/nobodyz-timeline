@@ -1,6 +1,17 @@
 <script setup lang="ts">
-import { VNodeRef, computed, withDefaults, ref } from "vue";
+import {
+  VNodeRef,
+  computed,
+  withDefaults,
+  ref,
+  onMounted,
+  // nextTick,
+} from "vue";
 import { useCustomScroll } from "./composables/use-custom-scroll";
+
+function getAnchor() {
+  return document.URL.split("#").length > 1 ? document.URL.split("#")[1] : null;
+}
 
 function round(value: number, precision: number) {
   var multiplier = Math.pow(10, precision || 0);
@@ -45,7 +56,7 @@ const currentItemIndex = ref<number>(0);
 const transitionTimeMs = computed(() => props.transitionTimeMs);
 
 const cssLabelsTranslateY = computed(
-  () => `${-118 + -66 * currentItemIndex.value}px` // -65.166
+  () => `calc(50vh - 117px - ${66.2 * currentItemIndex.value}px)`
 );
 const cssLabelsTransitionTimeS = computed(
   () => `${round(props.transitionTimeMs / 1000, 1)}s`
@@ -102,6 +113,24 @@ useCustomScroll({
   },
 });
 
+onMounted(async () => {
+  const anchor = getAnchor();
+  if (anchor == null) return;
+  const element = document.getElementById(anchor!);
+  if (element == null) return;
+  const [item] =
+    [...itemsRef.value.entries()].find(([, value]) => element === value) ?? [];
+
+  currentItemIndex.value = props.items.findIndex((x) => x === item);
+  currentItem.value = item;
+
+  await scrollToElementSmoothly({
+    toElement: element,
+    duration: transitionTimeMs.value,
+  });
+  emit("scrolled-to", item!);
+});
+
 async function onClickLabel(item: Item) {
   if (isScrolling.value) return;
   if (currentItem.value === item) return;
@@ -114,6 +143,10 @@ async function onClickLabel(item: Item) {
     duration: transitionTimeMs.value,
   });
   emit("scrolled-to", item);
+}
+
+function prepareId(item: Item) {
+  return item.title.toLocaleLowerCase().replace(/\s+/g, "-");
 }
 </script>
 
@@ -138,6 +171,7 @@ async function onClickLabel(item: Item) {
           :ref="(el) => itemsRef.set(item, el)"
           :key="`item-${i}`"
           :class="{ 'item--active': i === currentItemIndex }"
+          :id="prepareId(item)"
         >
           <slot name="item" v-bind="item"></slot>
         </li>
@@ -195,13 +229,15 @@ div.timeline__items > ul > li > :deep(*) {
 
 div.timeline__labels > ul {
   position: sticky;
-  top: 50vh;
+  top: 0px;
+  height: 0px;
+  /* top: 50vh; */
 
   margin: 0 auto;
 
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* justify-content: center; */
   align-items: center;
 
   text-align: center;
