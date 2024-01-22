@@ -7,6 +7,10 @@ function round(value: number, precision: number) {
   return Math.round(value * multiplier) / multiplier;
 }
 
+function keepInRange(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 // FIXME:
 declare global {
   function smoothScroll(options: any): void;
@@ -36,27 +40,29 @@ const currentItem = ref<Item | undefined>(undefined);
 const currentItemIndex = ref<number>(0);
 
 const transitionTimeMs = computed(() => props.transitionTimeMs);
-const labelsTranslateY = computed(
-  () => `${-148 + -65.166 * currentItemIndex.value}px`
+
+const cssLabelsTranslateY = computed(
+  () => `${-118 + -66 * currentItemIndex.value}px` // -65.166
 );
-const labelsTransitionTimeS = computed(
+const cssLabelsTransitionTimeS = computed(
   () => `${round(props.transitionTimeMs / 1000, 1)}s`
 );
 
 /**
  * TODO:
  * - observe currently watch element and save it
- * - onScroll should choose next or previous element to scrollBY to with reference of html element based on currently observed element
  * - upon normal scrolling it should decide what element it should scrollTo (which one is closed then this is the one which should be choosen)
- *
- * - labels should use transform as a base for showing centered element
  */
 
 // FIXME:
 function getItemToScrollTo(direction: "UP" | "DOWN") {
   const prevIndex = props.items.findIndex((x) => x === currentItem.value);
-  const nextIndex = (currentItemIndex.value =
-    (prevIndex + (direction === "UP" ? -1 : 1)) % props.items.length);
+  const nextIndex = keepInRange(
+    prevIndex + (direction === "UP" ? -1 : 1),
+    0,
+    props.items.length - 1
+  );
+  currentItemIndex.value = nextIndex;
 
   const nextItem = (currentItem.value = props.items.at(nextIndex));
   const element = itemsRef.value.get(nextItem!);
@@ -64,17 +70,23 @@ function getItemToScrollTo(direction: "UP" | "DOWN") {
 }
 
 function scrollToElementSmoothly(options: any) {
+  isScrolling.value = true;
   return new Promise((resolve) => {
     smoothScroll({
       ...options,
-      complete: () => resolve(true),
+      complete: () => {
+        isScrolling.value = false;
+        resolve(true);
+      },
     });
   });
 }
 
+const isScrolling = ref(false);
+
 useCustomScroll({
   async onScroll(direction) {
-    console.log("🚀 ~ onScroll ~ direction:", direction);
+    if (isScrolling.value) return;
 
     const element = getItemToScrollTo(direction);
     if (element == null) return;
@@ -83,9 +95,21 @@ useCustomScroll({
       toElement: element,
       duration: transitionTimeMs.value,
     });
-    console.timeEnd("onScroll");
   },
 });
+
+async function onClickLabel(item: Item) {
+  if (isScrolling.value) return;
+  if (currentItem.value === item) return;
+
+  const element = itemsRef.value.get(item!);
+  currentItemIndex.value = props.items.findIndex((x) => x === item);
+
+  await scrollToElementSmoothly({
+    toElement: element,
+    duration: transitionTimeMs.value,
+  });
+}
 </script>
 
 <template>
@@ -96,6 +120,7 @@ useCustomScroll({
           :class="{ 'label--active': i === currentItemIndex }"
           v-for="(item, i) in items"
           :key="`label-${i}`"
+          @click="onClickLabel(item)"
         >
           {{ item.label }}
         </li>
@@ -107,6 +132,7 @@ useCustomScroll({
           v-for="(item, i) in items"
           :ref="(el) => itemsRef.set(item, el)"
           :key="`item-${i}`"
+          :class="{ 'item--active': i === currentItemIndex }"
         >
           <slot name="item" v-bind="item"></slot>
         </li>
@@ -165,8 +191,7 @@ div.timeline__items > ul > li > :deep(*) {
 div.timeline__labels > ul {
   position: sticky;
   top: 50vh;
-  /* left: 0;
-  right: 0; */
+
   margin: 0 auto;
 
   display: flex;
@@ -176,21 +201,27 @@ div.timeline__labels > ul {
 
   text-align: center;
 
-  transform: translateY(v-bind(labelsTranslateY));
-  transition: transform v-bind(labelsTransitionTimeS) cubic-bezier(0.475, -0.020, 0.010, 1.005);
+  transform: translateY(v-bind(cssLabelsTranslateY));
+  transition: transform v-bind(cssLabelsTransitionTimeS)
+    cubic-bezier(0.475, -0.02, 0.01, 1.005);
 }
 
 div.timeline__labels > ul > li {
   margin: 24px 0;
-  transition: margin v-bind(labelsTransitionTimeS)
+  /* line-height: 16px; */
+  transition: margin v-bind(cssLabelsTransitionTimeS)
       cubic-bezier(0.475, -0.02, 0.01, 1.005),
-    font-size v-bind(labelsTransitionTimeS)
+    font-size v-bind(cssLabelsTransitionTimeS)
       cubic-bezier(0.475, -0.02, 0.01, 1.005),
-    line-height v-bind(labelsTransitionTimeS)
+    line-height v-bind(cssLabelsTransitionTimeS)
       cubic-bezier(0.475, -0.02, 0.01, 1.005);
 }
 
+div.timeline__labels > ul > li:not(.label--active) {
+  cursor: pointer;
+}
+
 .label--active {
-  font-size: 320px;
+  font-size: 197px;
 }
 </style>
