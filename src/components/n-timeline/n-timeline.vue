@@ -36,11 +36,13 @@ const props = withDefaults(
 
     items: Item[];
 
+    enableAnchors?: boolean;
     hideLabels?: boolean;
   }>(),
   {
     transitionTimeMs: 200,
 
+    enableAnchors: true,
     hideLabels: false,
   }
 );
@@ -110,7 +112,8 @@ useCustomScroll({
   },
 });
 
-onMounted(async () => {
+async function scrollToAnchor() {
+  if (!props.enableAnchors) return;
   const anchor = getAnchor();
   if (anchor == null) return;
   const element = document.getElementById(anchor!);
@@ -126,9 +129,11 @@ onMounted(async () => {
     duration: transitionTimeMs.value,
   });
   emit("scrolled-to", item!);
-});
+}
 
-async function onClickLabel(item: Item) {
+onMounted(scrollToAnchor);
+
+async function scrollToItem(item: Item) {
   if (isScrolling.value) return;
   if (currentItem.value === item) return;
 
@@ -143,8 +148,13 @@ async function onClickLabel(item: Item) {
 }
 
 function prepareId(item: Item) {
+  if (!props.enableAnchors) return;
   return item.title.toLocaleLowerCase().replace(/\s+/g, "-");
 }
+
+defineExpose({
+  scrollToItem,
+});
 </script>
 
 <template>
@@ -155,7 +165,7 @@ function prepareId(item: Item) {
           :class="{ 'label--active': i === currentItemIndex }"
           v-for="(item, i) in items"
           :key="`label-${i}`"
-          @click="onClickLabel(item)"
+          @click="scrollToItem(item)"
         >
           <slot name="label" v-bind="item">{{ item.label }}</slot>
         </li>
