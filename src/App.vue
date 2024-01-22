@@ -193,10 +193,14 @@ const items = ref([
     text: "The little big idea of branding the National Parks led to an Apple Design Award winning iOS app.",
   },
 ]);
+
 </script>
 
 <template>
   <NTimeline :transitionTimeMs="200" :items="items">
+    <!-- <template #label="{ label, title, subtitle, text }">
+      {{ label }}
+    </template> -->
     <template #item="{ title, subtitle, text }">
       <div>
         <h2>{{ title }}</h2>

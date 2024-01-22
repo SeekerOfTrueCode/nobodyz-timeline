@@ -1,3 +1,3 @@
-import NTimeline from "./components/n-timeline.vue";
+import NTimeline from "./components/n-timeline/n-timeline.vue";
 
 export { NTimeline };

@@ -8,43 +8,40 @@ import {
   // nextTick,
 } from "vue";
 import { useCustomScroll } from "./composables/use-custom-scroll";
-
-function getAnchor() {
-  return document.URL.split("#").length > 1 ? document.URL.split("#")[1] : null;
-}
-
-function round(value: number, precision: number) {
-  var multiplier = Math.pow(10, precision || 0);
-  return Math.round(value * multiplier) / multiplier;
-}
-
-function keepInRange(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
+import { getAnchor } from "./utils/get-anchor";
+import { keepInRange } from "./utils/keep-in-range";
+import { round } from "./utils/round";
 
 // FIXME:
 declare global {
   function smoothScroll(options: any): void;
 }
-
 type Item = {
   label: string;
   [key: string]: any;
 };
+
 defineSlots<{
+  label(props: Item): any;
   item(props: Item): any;
 }>();
+
 const emit = defineEmits<{
   "scrolled-to": [Item];
 }>();
+
 const props = withDefaults(
   defineProps<{
     transitionTimeMs?: number;
 
     items: Item[];
+
+    hideLabels?: boolean;
   }>(),
   {
     transitionTimeMs: 200,
+
+    hideLabels: false,
   }
 );
 
@@ -152,7 +149,7 @@ function prepareId(item: Item) {
 
 <template>
   <div class="timeline">
-    <div class="timeline__labels">
+    <div v-if="!hideLabels" class="timeline__labels">
       <ul>
         <li
           :class="{ 'label--active': i === currentItemIndex }"
@@ -160,7 +157,7 @@ function prepareId(item: Item) {
           :key="`label-${i}`"
           @click="onClickLabel(item)"
         >
-          {{ item.label }}
+          <slot name="label" v-bind="item">{{ item.label }}</slot>
         </li>
       </ul>
     </div>

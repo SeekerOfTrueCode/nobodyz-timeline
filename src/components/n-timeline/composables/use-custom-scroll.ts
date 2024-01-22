@@ -1,20 +1,18 @@
 import { onMounted, onUnmounted } from "vue";
+import { DIRECTION, type Direction } from "../constants/direction";
 
-const DIRECTION = {
-    UP: 'UP',
-    DOWN: 'DOWN'
-} as const
+
 
 type Options = {
     /**
      * Callback called whenever scrolling by user happens 
      */
-    onScroll?(direction: (keyof typeof DIRECTION)): (Promise<void> | void)
+    onScroll?(direction: Direction): (Promise<void> | void)
 
     /**
      * Callback called whenever during the scrolling there is change in direction (from up to down or down to up inlcuding first scroll event)
      */
-    onScrollChange?(direction: (keyof typeof DIRECTION)): (Promise<void> | void)
+    onScrollChange?(direction: Direction): (Promise<void> | void)
 }
 
 
