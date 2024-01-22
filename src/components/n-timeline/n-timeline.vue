@@ -1,21 +1,11 @@
 <script setup lang="ts">
-import {
-  VNodeRef,
-  computed,
-  withDefaults,
-  ref,
-  onMounted,
-  // nextTick,
-} from "vue";
+import { VNodeRef, computed, withDefaults, ref, onMounted } from "vue";
 import { useCustomScroll } from "./composables/use-custom-scroll";
 import { getAnchor } from "./utils/get-anchor";
 import { keepInRange } from "./utils/keep-in-range";
 import { round } from "./utils/round";
+import { useSmoothScroll } from "./composables/use-smooth-scroll";
 
-// FIXME:
-declare global {
-  function smoothScroll(options: any): void;
-}
 type Item = {
   label: string;
   [key: string]: any;
@@ -61,54 +51,51 @@ const cssLabelsTransitionTimeS = computed(
   () => `${round(props.transitionTimeMs / 1000, 1)}s`
 );
 
+function htmlAnchor(item: Item): string | undefined {
+  if (!props.enableAnchors) return;
+  return item.title.toLocaleLowerCase().replace(/\s+/g, "-");
+}
+
 /**
  * TODO:
  * - observe currently watch element and save it
  * - upon normal scrolling it should decide what element it should scrollTo (which one is closed then this is the one which should be choosen)
  */
 
-// FIXME:
-function getItemToScrollTo(direction: "UP" | "DOWN") {
+function getItemToScrollTo(direction: "UP" | "DOWN"): Item | undefined {
   const prevIndex = props.items.findIndex((x) => x === currentItem.value);
-  const nextIndex = keepInRange(
+  const index = keepInRange(
     prevIndex + (direction === "UP" ? -1 : 1),
     0,
     props.items.length - 1
   );
-  currentItemIndex.value = nextIndex;
+  const item = props.items.at(index);
 
-  const item = (currentItem.value = props.items.at(nextIndex));
+  return item;
+}
+
+const { isScrolling, scrollToElement } = useSmoothScroll();
+
+async function scrollToItem(item?: Item) {
+  if (isScrolling.value) return;
+  if (item == null) return;
+  if (currentItem.value === item) return;
   const element = itemsRef.value.get(item!);
-  return [element, item];
-}
 
-function scrollToElementSmoothly(options: any) {
-  isScrolling.value = true;
-  return new Promise((resolve) => {
-    smoothScroll({
-      ...options,
-      complete: () => {
-        isScrolling.value = false;
-        resolve(true);
-      },
-    });
+  currentItemIndex.value = props.items.findIndex((x) => x === item);
+  currentItem.value = item;
+
+  await scrollToElement({
+    toElement: element,
+    duration: transitionTimeMs.value,
   });
+  emit("scrolled-to", item);
 }
-
-const isScrolling = ref(false);
 
 useCustomScroll({
   async onScroll(direction) {
-    if (isScrolling.value) return;
-
-    const [element, item] = getItemToScrollTo(direction);
-    if (element == null) return;
-
-    await scrollToElementSmoothly({
-      toElement: element,
-      duration: transitionTimeMs.value,
-    });
-    emit("scrolled-to", item);
+    const item = getItemToScrollTo(direction);
+    await scrollToItem(item);
   },
 });
 
@@ -118,39 +105,14 @@ async function scrollToAnchor() {
   if (anchor == null) return;
   const element = document.getElementById(anchor!);
   if (element == null) return;
+
   const [item] =
     [...itemsRef.value.entries()].find(([, value]) => element === value) ?? [];
 
-  currentItemIndex.value = props.items.findIndex((x) => x === item);
-  currentItem.value = item;
-
-  await scrollToElementSmoothly({
-    toElement: element,
-    duration: transitionTimeMs.value,
-  });
-  emit("scrolled-to", item!);
+  await scrollToItem(item);
 }
 
 onMounted(scrollToAnchor);
-
-async function scrollToItem(item: Item) {
-  if (isScrolling.value) return;
-  if (currentItem.value === item) return;
-
-  const element = itemsRef.value.get(item!);
-  currentItemIndex.value = props.items.findIndex((x) => x === item);
-
-  await scrollToElementSmoothly({
-    toElement: element,
-    duration: transitionTimeMs.value,
-  });
-  emit("scrolled-to", item);
-}
-
-function prepareId(item: Item) {
-  if (!props.enableAnchors) return;
-  return item.title.toLocaleLowerCase().replace(/\s+/g, "-");
-}
 
 defineExpose({
   scrollToItem,
@@ -178,7 +140,7 @@ defineExpose({
           :ref="(el) => itemsRef.set(item, el)"
           :key="`item-${i}`"
           :class="{ 'item--active': i === currentItemIndex }"
-          :id="prepareId(item)"
+          :id="htmlAnchor(item)"
         >
           <slot name="item" v-bind="item"></slot>
         </li>
@@ -271,5 +233,6 @@ div.timeline__labels > ul > li:not(.label--active) {
 
 .label--active {
   font-size: 197px;
+  cursor: default;
 }
 </style>

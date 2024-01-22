@@ -1,8 +1,6 @@
 import { onMounted, onUnmounted } from "vue";
 import { DIRECTION, type Direction } from "../constants/direction";
 
-
-
 type Options = {
     /**
      * Callback called whenever scrolling by user happens 
@@ -14,7 +12,6 @@ type Options = {
      */
     onScrollChange?(direction: Direction): (Promise<void> | void)
 }
-
 
 export function useCustomScroll(options: Options) {
     const onScroll = options.onScroll;
