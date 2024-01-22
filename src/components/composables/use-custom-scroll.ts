@@ -33,7 +33,6 @@ export function useCustomScroll(options: Options) {
         try {
             if (scrollTop > lastScrollTop) direction = DIRECTION.DOWN;
             else if (scrollTop < lastScrollTop) direction = DIRECTION.UP;
-            console.log(direction,scrollTop, lastScrollTop)
             return {
                 direction,
                 lastDirection,

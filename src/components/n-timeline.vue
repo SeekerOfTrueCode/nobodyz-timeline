@@ -23,6 +23,9 @@ type Item = {
 defineSlots<{
   item(props: Item): any;
 }>();
+const emit = defineEmits<{
+  "scrolled-to": [Item];
+}>();
 const props = withDefaults(
   defineProps<{
     transitionTimeMs?: number;
@@ -64,9 +67,9 @@ function getItemToScrollTo(direction: "UP" | "DOWN") {
   );
   currentItemIndex.value = nextIndex;
 
-  const nextItem = (currentItem.value = props.items.at(nextIndex));
-  const element = itemsRef.value.get(nextItem!);
-  return element;
+  const item = (currentItem.value = props.items.at(nextIndex));
+  const element = itemsRef.value.get(item!);
+  return [element, item];
 }
 
 function scrollToElementSmoothly(options: any) {
@@ -88,13 +91,14 @@ useCustomScroll({
   async onScroll(direction) {
     if (isScrolling.value) return;
 
-    const element = getItemToScrollTo(direction);
+    const [element, item] = getItemToScrollTo(direction);
     if (element == null) return;
 
     await scrollToElementSmoothly({
       toElement: element,
       duration: transitionTimeMs.value,
     });
+    emit("scrolled-to", item);
   },
 });
 
@@ -109,6 +113,7 @@ async function onClickLabel(item: Item) {
     toElement: element,
     duration: transitionTimeMs.value,
   });
+  emit("scrolled-to", item);
 }
 </script>
 
