@@ -5,11 +5,8 @@ import { getAnchor } from "./utils/get-anchor";
 import { keepInRange } from "./utils/keep-in-range";
 import { round } from "./utils/round";
 import { useSmoothScroll } from "./composables/use-smooth-scroll";
-
-type Item = {
-  label: string;
-  [key: string]: any;
-};
+import { type Item } from "./types/item";
+import { useScrollPositionRelativeToTimeline } from "./composables/use-scroll-position-relative-to-timeline";
 
 defineSlots<{
   label(props: Item): any;
@@ -37,6 +34,7 @@ const props = withDefaults(
   }
 );
 
+const timelineRef = ref(null);
 const itemsRef = ref(new Map<Item, VNodeRef | any>());
 
 const currentItem = ref<Item | undefined>(undefined);
@@ -45,7 +43,7 @@ const currentItemIndex = ref<number>(0);
 const transitionTimeMs = computed(() => props.transitionTimeMs);
 
 const cssLabelsTranslateY = computed(
-  () => `calc(50vh - 117px - ${66.2 * currentItemIndex.value}px)`
+  () => `calc(50vh - 117px - ${68 * currentItemIndex.value}px)`
 );
 const cssLabelsTransitionTimeS = computed(
   () => `${round(props.transitionTimeMs / 1000, 1)}s`
@@ -75,6 +73,7 @@ function getItemToScrollTo(direction: "UP" | "DOWN"): Item | undefined {
 }
 
 const { isScrolling, scrollToElement } = useSmoothScroll();
+const { isOutsideOfView } = useScrollPositionRelativeToTimeline(timelineRef);
 
 async function scrollToItem(item?: Item) {
   if (isScrolling.value) return;
@@ -94,6 +93,8 @@ async function scrollToItem(item?: Item) {
 
 useCustomScroll({
   async onScroll(direction) {
+    if (isOutsideOfView.value) return;
+
     const item = getItemToScrollTo(direction);
     await scrollToItem(item);
   },
@@ -120,7 +121,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="timeline">
+  <div ref="timelineRef" class="timeline">
     <div v-if="!hideLabels" class="timeline__labels">
       <ul>
         <li
@@ -155,6 +156,7 @@ defineExpose({
   justify-content: center;
 
   gap: 4rem;
+  overflow-y: clip;
 }
 
 .timeline__labels {
