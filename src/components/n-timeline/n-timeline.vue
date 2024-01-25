@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { VNodeRef, computed, withDefaults, ref, onMounted } from "vue";
-import { useCustomScroll } from "./composables/use-custom-scroll";
-import { getAnchor } from "./utils/get-anchor";
-import { keepInRange } from "./utils/keep-in-range";
-import { round } from "./utils/round";
-import { useSmoothScroll } from "./composables/use-smooth-scroll";
-import { type Item } from "./types/item";
+import { getAnchor, keepInRange, round } from "./utils";
+import type { Item } from "./types/item";
+
+import { useScrollDirection } from "./composables/use-scroll-direction";
 import { useScrollPositionRelativeToTimeline } from "./composables/use-scroll-position-relative-to-timeline";
+import { useSmoothScroll } from "./composables/use-smooth-scroll";
 
 defineSlots<{
   label(props: Item): any;
@@ -40,20 +39,6 @@ const itemsRef = ref(new Map<Item, VNodeRef | any>());
 const currentItem = ref<Item | undefined>(undefined);
 const currentItemIndex = ref<number>(0);
 
-const transitionTimeMs = computed(() => props.transitionTimeMs);
-
-const cssLabelsTranslateY = computed(
-  () => `calc(50vh - 117px - ${68 * currentItemIndex.value}px)`
-);
-const cssLabelsTransitionTimeS = computed(
-  () => `${round(props.transitionTimeMs / 1000, 1)}s`
-);
-
-function htmlAnchor(item: Item): string | undefined {
-  if (!props.enableAnchors) return;
-  return item.title.toLocaleLowerCase().replace(/\s+/g, "-");
-}
-
 /**
  * TODO:
  * - observe currently watch element and save it
@@ -73,7 +58,7 @@ function getItemToScrollTo(direction: "UP" | "DOWN"): Item | undefined {
 }
 
 const { isScrolling, scrollToElement } = useSmoothScroll();
-const { isOutsideOfView } = useScrollPositionRelativeToTimeline(timelineRef);
+const { isOutsideOfView, isOutsideBottom } = useScrollPositionRelativeToTimeline(timelineRef);
 
 async function scrollToItem(item?: Item) {
   if (isScrolling.value) return;
@@ -86,12 +71,12 @@ async function scrollToItem(item?: Item) {
 
   await scrollToElement({
     toElement: element,
-    duration: transitionTimeMs.value,
+    duration: props.transitionTimeMs,
   });
   emit("scrolled-to", item);
 }
 
-useCustomScroll({
+useScrollDirection({
   async onScroll(direction) {
     if (isOutsideOfView.value) return;
 
@@ -118,16 +103,32 @@ onMounted(scrollToAnchor);
 defineExpose({
   scrollToItem,
 });
+
+const cssLabelsTranslateY = computed(
+  () => `calc(50vh - 117px - ${68 * currentItemIndex.value}px)`
+);
+const cssLabelsTransitionTimeS = computed(
+  () => `${round(props.transitionTimeMs / 1000, 1)}s`
+);
+function htmlAnchor(item: Item): string | undefined {
+  if (!props.enableAnchors) return;
+  return item.title.toLocaleLowerCase().replace(/\s+/g, "-");
+}
 </script>
 
 <template>
   <div ref="timelineRef" class="timeline">
     <div v-if="!hideLabels" class="timeline__labels">
-      <ul>
+      <ul
+        :class="{
+          'labels-sticky': !isOutsideBottom,
+          'labels-absolute': isOutsideBottom,
+        }"
+      >
         <li
-          :class="{ 'label--active': i === currentItemIndex }"
           v-for="(item, i) in items"
           :key="`label-${i}`"
+          :class="{ 'label--active': i === currentItemIndex }"
           @click="scrollToItem(item)"
         >
           <slot name="label" v-bind="item">{{ item.label }}</slot>
@@ -199,23 +200,25 @@ div.timeline__items > ul > li > :deep(*) {
 }
 
 div.timeline__labels > ul {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+div.timeline__labels > ul.labels-sticky {
   position: sticky;
   top: 0px;
   height: 0px;
-  /* top: 50vh; */
-
-  margin: 0 auto;
-
-  display: flex;
-  flex-direction: column;
-  /* justify-content: center; */
-  align-items: center;
-
-  text-align: center;
-
   transform: translateY(v-bind(cssLabelsTranslateY));
+  /* probably should introduce transition after 0.2ms or something */
   transition: transform v-bind(cssLabelsTransitionTimeS)
     cubic-bezier(0.475, -0.02, 0.01, 1.005);
+}
+div.timeline__labels > ul.labels-absolute {
+  position: absolute;
+  bottom: calc(50vh - 117px);
+  width: 100%;
 }
 
 div.timeline__labels > ul > li {

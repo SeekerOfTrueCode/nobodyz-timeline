@@ -1,7 +1,9 @@
-import { Ref, onMounted, onUnmounted, ref } from "vue";
+import { Ref, onMounted, onUnmounted, ref, computed } from "vue";
 
 export function useScrollPositionRelativeToTimeline(timelineRef: Ref<HTMLElement | null>) {
-    const isOutsideOfView = ref(true)
+    const isOutsideTop = ref(false)
+    const isOutsideBottom = ref(false)
+    const isOutsideOfView = computed(() => isOutsideTop.value || isOutsideBottom.value)
 
     function timelineTopAndBottomAbsolute() {
         if (timelineRef.value == null) return { top: 0, bottom: 0 };
@@ -21,12 +23,8 @@ export function useScrollPositionRelativeToTimeline(timelineRef: Ref<HTMLElement
         const scrollTop = window.scrollY ?? document.documentElement.scrollTop;
         const scrollBottom = scrollTop + screen.height;
 
-        const outsideTop = timelineTop > scrollTop;
-        const outsideBottom = timelineBottom < scrollBottom;
-
-        isOutsideOfView.value = outsideTop || outsideBottom;
-        // console.log(`[scrollTop ${scrollTop} | scrollBottom ${scrollBottom}]`)
-        // console.log(`[timelineTop ${timelineTop} | timelineBottom ${timelineBottom}] isOutsideOfView ${isOutsideOfView.value}`)
+        isOutsideTop.value = timelineTop > scrollTop;
+        isOutsideBottom.value = timelineBottom < scrollBottom;
     }
 
     onMounted(() => {
@@ -36,5 +34,5 @@ export function useScrollPositionRelativeToTimeline(timelineRef: Ref<HTMLElement
         window.removeEventListener('scroll', scrollListener);
     });
 
-    return { isOutsideOfView }
+    return { isOutsideOfView, isOutsideTop, isOutsideBottom }
 }

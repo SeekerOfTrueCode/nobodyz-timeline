@@ -13,7 +13,7 @@ type Options = {
     onScrollChange?(direction: Direction): (Promise<void> | void)
 }
 
-export function useCustomScroll(options: Options) {
+export function useScrollDirection(options: Options) {
     const onScroll = options.onScroll;
     const onScrollChange = options.onScrollChange;
 
