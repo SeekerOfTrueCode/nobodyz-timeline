@@ -1,4 +1,4 @@
 export type Item = {
-    label: string;
+    title: string;
     [key: string]: any;
 };

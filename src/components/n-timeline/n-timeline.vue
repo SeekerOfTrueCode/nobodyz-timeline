@@ -104,8 +104,12 @@ defineExpose({
   scrollToItem,
 });
 
+function itemLabel(item: Item): string {
+  return item?.title?.charAt(0)?.toUpperCase();
+}
+
 const cssLabelsTranslateY = computed(
-  () => `calc(50vh - 117px - ${68 * currentItemIndex.value}px)`
+  () => `calc(50vh - 117px - ${68 * currentItemIndex.value}px)` // FIXME: I don't know why it's 117px, so probably should fix it
 );
 const cssLabelsTransitionTimeS = computed(
   () => `${round(props.transitionTimeMs / 1000, 1)}s`
@@ -131,7 +135,7 @@ function htmlAnchor(item: Item): string | undefined {
           :class="{ 'label--active': i === currentItemIndex }"
           @click="scrollToItem(item)"
         >
-          <slot name="label" v-bind="item">{{ item.label }}</slot>
+          <slot name="label" v-bind="item" :label="itemLabel(item)">{{ itemLabel(item) }}</slot>
         </li>
       </ul>
     </div>
